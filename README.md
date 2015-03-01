@@ -25,8 +25,10 @@ The overall goal of this problem is to produce and display a premade sequence fr
 
 B.	Design Problem Statement
 ----------------------------
-Our design is a 7-segment controller that takes three button inputs and a clock as input from the FPGA and outputs the HEX sequence:
-	0000, 0A0A, 5050, FE45, AABB, CCDD, FEED, DEAD, BEEF          
+Our design is a 7-segment controller that takes three button inputs and a clock as input from the FPGA and outputs the HEX sequence:  
+
+	'0000, 0A0A, 5050, FE45, AABB, CCDD, FEED, DEAD, BEEF'  
+	
 on the 7-segment display.  This sequence should repeat when it is operational, and should be displayed on the 4 7 segment displays on the right side of the board.  The design is implemented using Xilinx's Vivado CAD tool.  This sequence is stored in Xilinx's single port ROM/RAM IP-core for this design.  This design uses a specific sequence of values, but should be designed generically in a way that would make it easy to display a different signal. The design calls for an “effective clock” of 1 Hz and will control which value will be displayed.  This will allow each number in the sequence to be displayed for one second.
 The design also calls for a reset button that will allow the system to restart at the beginning of the sequence one second after the button is depressed; BTNC on the Nexys4 should perform this function. A reverse button that will toggle the system to output in the reverse order if pressed; BTNL should perform this function.  An enabler button that will stop the sequence from changing if it is pressed and will allow it to continue from where it left off if pressed again; BTNR should perform this function.  These buttons need to be debounced in order to retain proper functionality.
 In addition to the 7-segment displays on the board, this design specification also calls for the system to display a 16 bit HEX number on an external display, namely the Sparkfun 7-Segment Serial Display.  This is to be designed using a TTL Serial Communication controller, an SPI Serial Peripheral controller as well as an I2C controller utilizing and I2C master blackbox to display the signal on an external serial 7-segment display.  These two design methods are to be separate entities and are self-contained designs.
