@@ -13,8 +13,8 @@ VHDL Communications for an External 7 Segment Display.
 [figure9]: /Figures/Figure9.png
 [figure10]: /Figures/Figure10.png
 [figure11_1]: /Figures/Figure11_1.png
-[figure11_1]: /Figures/Figure11_2.png
-[figure11_1]: /Figures/Figure11_3.png
+[figure11_2]: /Figures/Figure11_2.png
+[figure11_3]: /Figures/Figure11_3.png
 
 
 A.	Summary
@@ -82,6 +82,7 @@ Board Display:
 	The board display block uses a clock enabler that runs at the refresh rate desired by the user, this is a generic value. In order to correctly make a board display for this design, there needs to be a counter, sensitive to the clock enabler, which has a maximum of four values because we are using four seven segment controllers. This can also be done as a state machine but for simplicity a counter is used. The basic idea of the counter is to select which seven segment and its corresponding data. For instance, at the first value of the counter the module should select the anode for the furthest right display and the least significant hex of the data sequence.  This is illustrated below using the sequence of “BEEF.”
 
 ![Refresh][figure3]
+
 Figure 3: The main function of the board display module.
 	In the above figure, the red for the text represents which part of the text should be selected and the red of the 7 segment represents which segment or anode to choose. Because only one turns on at a time, this must be done with a high refresh rate in order to fool a human eye into thinking they are all displayed at once. This generic value is set at 1KHz. Lastly, when displaying the sequence onto the 7 segments, there is no native way to translate the hex into an active-low logic vector which represents which LEDs to turn on. This deficiency is resolved with a simple case statement that can work for any given hex and active-low display.
 
@@ -89,6 +90,7 @@ TTL Communication:
 	In this design, with this external display, the default Baud rate is 9600 which insists upon a clock enabler at that frequency. This baud rate determines the rate of change of a simple 10 stage state machine. In this state machine, the first and last state are used as start and stop bits for communication which the intermediate 8 states are bits determined by the section of data being sent to the external display. An example of the state machine is shown below.
 
 ![TTL][figure4]
+
 Figure 4: Example state machine for TTL Communications.
 
 In this example there would need to be another signal called “DataSection” that changes on the tenth state either with an internal or external counter. This would allow for initial commands to be sent to the display for setup as well as easily splitting up the data to send out in bytes when new data comes in using case statements.
@@ -97,6 +99,7 @@ SPI Communication:
 	SPI has a much different behavior than TTL mainly because it uses more than one line for sending data. SPI needs 3 lines: Serial clock (SCK), Slave select (SS) and Master-out Slave-in (MOSI). Each slave that is used generally will prefer to run at different speeds but allows a range of speeds sent down the SCK. In this instance this is set, in the generics, to be 250KHz. Using a clock enabler, the system runs at 250KHz with 19 total states. The large number of states is used to artificially create the SCK. A normal clock can be used with some extra logic but for design simplicity the multiple states allows for a gap in the clock to disable the SS.  When the SS is inactive, the MOSI is required to be in high impedance mode; otherwise the MOSI is sending the data to the slave reading on the rising edge of SCK (when CPOL=0). This is more easily shown through the waveforms below.
 
 ![SPI][figure5]
+
 Figure 5: Example SPI waveform.1
 	Shown by the red lines on the waveform, the data is read in for CPOL=0 on the rising edge of the SCK. Since the SS is an active low line, it stays low for majority of the waveform, only deactivating during the break in SCK. The “cycles” on the waveform represent new pieces of the data to be sent, meaning that what is shown above is only for a single byte. 
 At the end of the cycles there is a gap between the “8” and the high impedance, this just means that it does not matter what the line is, it will have no effect on the system. The states for this module of the design can be shown in the waveform above rather than in an overly large state machine diagram.
@@ -107,16 +110,19 @@ I2C Protocol:
 	The I2C component of this design is more complex than the others, not only because I2C is a robust protocol but because a black box I2C master was used to do the design. First in order to design either piece, the I2C protocol should be understood.
 
 ![I2C][figure6]
+
 Figure 6: Start and stop conditions for the I2C Protocol.2
 Depicted above is the required start and stop conditions for transmitting anything through the protocol. The first, of two lines, must fall to a low while the second line stays high. That part of the protocol is fairly simple as well as transmitting data across the line. The bits are simply sent out on the SDA line while SCL pulses when a bit needs to be sent. The unique part to I2C is that several slaves are usually connected to the same lines and in order to interact with one of the slaves, the master sends out the address of the slave it wants to interact with as well as a single bit stating whether the master wants to read or write. Upon doing so, the slave with the corresponding address should pull down the SDA line. If the line is not pulled down by the slave on the ACK clock cycle then the system receives a NACK error, or a “no acknowledgement” error.
 
 ![I2C][figure7]
+
 Figure 7: Generic example for using I2C.
 Shown in the waveforms above, the NACK error can occur on the 9th pulse of SCL. After the acknowledgement is received by the master, it then can send out or read in the data it needs to. After data is sent or read, acknowledgements occur again. Multiple bytes can be sent out before needing to stop and resend the address, however has been found that the maximum number is about 255 bytes.
 
 Since the I2C master was just a black box and not to be designed it’s only necessary to be able to use it rather than make it. However, since the I2C protocol is understood its general design can be easily reproduced by using the example state machine diagram provided by the maker of the I2C master. The general premise of the master is to send out the start/stop bits as well as the data at the correct speed and intervals. During this task it needs to alert the user or controller of it that the system is currently at work as well as if there is any error communicating with slaves. After it is done working it should tell its controller that it is definitely done with the task it was given. This can then give the user the option to either stop the system or perform more tasks. The state machine diagram that shows this in more detail is shown below.
  
 ![I2C Master][figure8]
+
 Figure 8: State machine diagram for the I2C master.3
 The diagram shows, in more detail, the previous explanation of its operations. The master can detect both acknowledgements as well as read/write data with the option to stop the system when it is needed by the controller.
 
@@ -124,6 +130,7 @@ The I2C controller should be designed in a fashion as to controller the I2C mast
 The controller needs to initialize the master in order to use it so that leads to an initial or start state which waits for resetting and initializing by having a maximum counter and counting down to 0, as well as providing the address and desired action of writing. Then the state for writing because it needs to change the data in nearly the same manner as the other output blocks of the design, where it cycles through a set of commands then chunks of the sequence from the ROM. The final state should stop or disable the master once the data is done being sent. This final state should only go back to the beginning on a change in the data. This is illustrated in the state diagram provided.
 
 ![I2C Controller][figure9]
+
 Figure 9: State machine of the I2C controller.
 
 The pseudo-code for this is shown below.
@@ -171,12 +178,14 @@ Hardware Setup:
 	Shown below is the external hardware used in this design. This is the 7 segment display from Sparkfun which supports several communication protocols, including those used in this design.
 
 ![External][figure10]
+
 Figure 10: The generic setup of the external 7 segment display.
 	This 7 segment is designed to be used with Arduino tools but can be used with any device that uses a recognized protocol. Since it is usually used with Arduino however, it has two sets of power and ground, shown on the top row as “VCC” and “GND” as well as on the bottom row except the ones on the bottom row are meant to be used with Arduino programming.4 Shown below is the hookups for the protocols used in this design, again these can be used with the VCC and GND of the bottom row.
 
 ![TTL][figure11_1]
 ![SPI][figure11_2]
 ![I2C][figure11_3]
+
 Figure 11: TTL, SPI and I2C setups shown respectively.
 
 Module Testing:
