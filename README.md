@@ -1,15 +1,30 @@
 VHDL Communications for an External 7 Segment Display.
+======================================================
 
-**ALL FIGURES IN FIGURES FOLDER**
+
+[figure1]: /Figures/Figure1.png
+[figure2]: /Figures/Figure2.png
+[figure3]: /Figures/Figure3.png
+[figure4]: /Figures/Figure4.png
+[figure5]: /Figures/Figure5.png
+[figure6]: /Figures/Figure6.png
+[figure7]: /Figures/Figure7.png
+[figure8]: /Figures/Figure8.jpg
+[figure9]: /Figures/Figure9.png
+[figure10]: /Figures/Figure10.png
+[figure11_1]: /Figures/Figure11_1.png
+[figure11_1]: /Figures/Figure11_2.png
+[figure11_1]: /Figures/Figure11_3.png
+
 
 A.	Summary
-
+-----------
 The design needs to be implemented using the Xilinx Vivado CAD software and be designed for and tested on the Nexys4 board. It will also utilize Xilinx’s single port ROM IP-Core. An external piece of hardware that must be used is the Sparkfun 7 segment display.
 The overall goal of this problem is to produce and display a premade sequence from an IP-Core ROM to onboard and an external display. The external display needs to be able to be controlled using TTL, SPI or I2C meaning all three must be designed and implemented. The sequence that is being displayed should go in the forward direction by default but react to button presses. One button must asynchronously reset the system, another must enable/disable the change of sequence and the other will control the direction the sequence goes. These buttons must be debounced and implemented properly.
 		This system was thoroughly tested and was successfully implemented on the Nexy4 board. It performed to specifications given in the design problem as well cohere to good design practice for maintenance and reusability.
 
 B.	Design Problem Statement
-
+----------------------------
 Our design is a 7-segment controller that takes three button inputs and a clock as input from the FPGA and outputs the HEX sequence:
 			0000, 0A0A, 5050, FE45, AABB, CCDD, FEED, DEAD, BEEF               
 on the 7-segment display.  This sequence should repeat when it is operational, and should be displayed on the 4 7 segment displays on the right side of the board.  The design is implemented using Xilinx's Vivado CAD tool.  This sequence is stored in Xilinx's single port ROM/RAM IP-core for this design.  This design uses a specific sequence of values, but should be designed generically in a way that would make it easy to display a different signal. The design calls for an “effective clock” of 1 Hz and will control which value will be displayed.  This will allow each number in the sequence to be displayed for one second.
@@ -19,10 +34,10 @@ Finally, the design, as well as the individual modules, was to be tested and ana
 
 
 C.	Problem Decomposition
-
- 
+-------------------------
+![Top Level][figure1]
 Figure 1: Top level block diagram
- 
+![Top Level][figure2]
 Figure 2: RTL Block Diagram
 In order to keep the design modularized and easy to modify/reuse, the top level design needs to be broken up into individual blocks. Starting with the inputs to the overall system, there should be either one block or three separate blocks to handle the button inputs. The code provided by Digilent allows the buttons to be handled in three separate and easy to use black boxes that allow for toggling as well as simple debouncing.
 
@@ -37,7 +52,7 @@ Another output block, for the SPI communication, would follow suit in terms of i
 Finally, the I2C protocol must be adhered to in the i2c controlling block. Due to the modular design of the system, this should also only require the board clock with the data in order to be functional. In this design there is black box i2c master provided so this i2c controlling block is to be designed around this. Internally then, the i2c controller would need to contain the i2c master and use it to properly send the data. In an overview sense, this block needs to run the i2c master in a manner that would produce desirable outputs. This requires a state machine to initialize internal components as well as write and stop the data flow. Because this still follows I2C protocol there would be two ‘outputs’ which are actually input-outputs. They are SDA and SCL; technically input-output lines however for the purpose of the current design the input portion is only used for acknowledgements rather than transferring data.
 
 D.	Detailed Design and Module Level Testing
-
+--------------------------------------------
 Overall, because the design was designed with a modular basis, the individual blocks can be analyzed for their function and then the interaction between them can be seen and understood. This also allows for blocks to be reused in future designs. The RTL diagram provided by the Vivado CAD tool is shown in the appendices as well as the source code.
 
 Button Debouncing:
@@ -65,14 +80,15 @@ ROM:
 
 Board Display:
 	The board display block uses a clock enabler that runs at the refresh rate desired by the user, this is a generic value. In order to correctly make a board display for this design, there needs to be a counter, sensitive to the clock enabler, which has a maximum of four values because we are using four seven segment controllers. This can also be done as a state machine but for simplicity a counter is used. The basic idea of the counter is to select which seven segment and its corresponding data. For instance, at the first value of the counter the module should select the anode for the furthest right display and the least significant hex of the data sequence.  This is illustrated below using the sequence of “BEEF.”
- 
+
+![Refresh][figure3]
 Figure 3: The main function of the board display module.
 	In the above figure, the red for the text represents which part of the text should be selected and the red of the 7 segment represents which segment or anode to choose. Because only one turns on at a time, this must be done with a high refresh rate in order to fool a human eye into thinking they are all displayed at once. This generic value is set at 1KHz. Lastly, when displaying the sequence onto the 7 segments, there is no native way to translate the hex into an active-low logic vector which represents which LEDs to turn on. This deficiency is resolved with a simple case statement that can work for any given hex and active-low display.
 
 TTL Communication:
 	In this design, with this external display, the default Baud rate is 9600 which insists upon a clock enabler at that frequency. This baud rate determines the rate of change of a simple 10 stage state machine. In this state machine, the first and last state are used as start and stop bits for communication which the intermediate 8 states are bits determined by the section of data being sent to the external display. An example of the state machine is shown below.
 
- 
+![TTL][figure4]
 Figure 4: Example state machine for TTL Communications.
 
 In this example there would need to be another signal called “DataSection” that changes on the tenth state either with an internal or external counter. This would allow for initial commands to be sent to the display for setup as well as easily splitting up the data to send out in bytes when new data comes in using case statements.
@@ -80,7 +96,7 @@ In this example there would need to be another signal called “DataSection” t
 SPI Communication:
 	SPI has a much different behavior than TTL mainly because it uses more than one line for sending data. SPI needs 3 lines: Serial clock (SCK), Slave select (SS) and Master-out Slave-in (MOSI). Each slave that is used generally will prefer to run at different speeds but allows a range of speeds sent down the SCK. In this instance this is set, in the generics, to be 250KHz. Using a clock enabler, the system runs at 250KHz with 19 total states. The large number of states is used to artificially create the SCK. A normal clock can be used with some extra logic but for design simplicity the multiple states allows for a gap in the clock to disable the SS.  When the SS is inactive, the MOSI is required to be in high impedance mode; otherwise the MOSI is sending the data to the slave reading on the rising edge of SCK (when CPOL=0). This is more easily shown through the waveforms below.
 
- 
+![SPI][figure5]
 Figure 5: Example SPI waveform.1
 	Shown by the red lines on the waveform, the data is read in for CPOL=0 on the rising edge of the SCK. Since the SS is an active low line, it stays low for majority of the waveform, only deactivating during the break in SCK. The “cycles” on the waveform represent new pieces of the data to be sent, meaning that what is shown above is only for a single byte. 
 At the end of the cycles there is a gap between the “8” and the high impedance, this just means that it does not matter what the line is, it will have no effect on the system. The states for this module of the design can be shown in the waveform above rather than in an overly large state machine diagram.
@@ -89,44 +105,46 @@ Similar to TTL, a case statement with a counter controls what data piece is curr
 
 I2C Protocol:
 	The I2C component of this design is more complex than the others, not only because I2C is a robust protocol but because a black box I2C master was used to do the design. First in order to design either piece, the I2C protocol should be understood.
- 
+
+![I2C][figure6]
 Figure 6: Start and stop conditions for the I2C Protocol.2
 Depicted above is the required start and stop conditions for transmitting anything through the protocol. The first, of two lines, must fall to a low while the second line stays high. That part of the protocol is fairly simple as well as transmitting data across the line. The bits are simply sent out on the SDA line while SCL pulses when a bit needs to be sent. The unique part to I2C is that several slaves are usually connected to the same lines and in order to interact with one of the slaves, the master sends out the address of the slave it wants to interact with as well as a single bit stating whether the master wants to read or write. Upon doing so, the slave with the corresponding address should pull down the SDA line. If the line is not pulled down by the slave on the ACK clock cycle then the system receives a NACK error, or a “no acknowledgement” error.
 
- 
+![I2C][figure7]
 Figure 7: Generic example for using I2C.
 Shown in the waveforms above, the NACK error can occur on the 9th pulse of SCL. After the acknowledgement is received by the master, it then can send out or read in the data it needs to. After data is sent or read, acknowledgements occur again. Multiple bytes can be sent out before needing to stop and resend the address, however has been found that the maximum number is about 255 bytes.
 
 Since the I2C master was just a black box and not to be designed it’s only necessary to be able to use it rather than make it. However, since the I2C protocol is understood its general design can be easily reproduced by using the example state machine diagram provided by the maker of the I2C master. The general premise of the master is to send out the start/stop bits as well as the data at the correct speed and intervals. During this task it needs to alert the user or controller of it that the system is currently at work as well as if there is any error communicating with slaves. After it is done working it should tell its controller that it is definitely done with the task it was given. This can then give the user the option to either stop the system or perform more tasks. The state machine diagram that shows this in more detail is shown below.
  
+![I2C Master][figure8]
 Figure 8: State machine diagram for the I2C master.3
 The diagram shows, in more detail, the previous explanation of its operations. The master can detect both acknowledgements as well as read/write data with the option to stop the system when it is needed by the controller.
 
 The I2C controller should be designed in a fashion as to controller the I2C master. This includes setting up the correct address for the slave being controlled in combination with the data. For this specific design, the controller does not have to control data being read in because data is being written to an external 7 segment display. With an I2C master being used in the design, the controller can be less complex; using only three states. 
 The controller needs to initialize the master in order to use it so that leads to an initial or start state which waits for resetting and initializing by having a maximum counter and counting down to 0, as well as providing the address and desired action of writing. Then the state for writing because it needs to change the data in nearly the same manner as the other output blocks of the design, where it cycles through a set of commands then chunks of the sequence from the ROM. The final state should stop or disable the master once the data is done being sent. This final state should only go back to the beginning on a change in the data. This is illustrated in the state diagram provided.
 
- 
+![I2C Controller][figure9]
 Figure 9: State machine of the I2C controller.
 
 The pseudo-code for this is shown below.
 
 When Start state:
-If counter /= 0
-Activate master reset
-Disable master
-NextState<=Start state;
-Count down
-Else
-	Disable master reset
-	Re-enable master
-	Set the address
-	Set the read/write
-	NextState<=Write state;
-End if;
+	If counter /= 0
+		Activate master reset
+		Disable master
+		NextState<=Start state;
+		Count down
+	Else
+		Disable master reset
+		Re-enable master
+		Set the address
+		Set the read/write
+		NextState<=Write state;
+	End if;
 
 When Write state:
-storedData<=Data being written;
-previousBusy<=Busy from master;
+	storedData<=Data being written;
+	previousBusy<=Busy from master;
 
 	If Busy goes to 0 then
 		If not at the last byte then
@@ -151,10 +169,14 @@ This design resets the byte choice back to the command to reset the cursor back 
 
 Hardware Setup:
 	Shown below is the external hardware used in this design. This is the 7 segment display from Sparkfun which supports several communication protocols, including those used in this design.
- 
+
+![External][figure10]
 Figure 10: The generic setup of the external 7 segment display.
 	This 7 segment is designed to be used with Arduino tools but can be used with any device that uses a recognized protocol. Since it is usually used with Arduino however, it has two sets of power and ground, shown on the top row as “VCC” and “GND” as well as on the bottom row except the ones on the bottom row are meant to be used with Arduino programming.4 Shown below is the hookups for the protocols used in this design, again these can be used with the VCC and GND of the bottom row.
-   
+
+![TTL][figure11_1]
+![SPI][figure11_2]
+![I2C][figure11_3]
 Figure 11: TTL, SPI and I2C setups shown respectively.
 
 Module Testing:
@@ -162,7 +184,7 @@ Module Testing:
 The serial TTL communications block, the SPI communications block as well as the I2C Controller are each designed and tested separately. This occurs before they are added to the overall system in order to avoid any unintentional errors. For the TTL communications block, the design was simulated in order to check the functionality of the state machine and the RX terminal. The SPI and I2C were tested in similar fashions except with different ports. The proper functionality can be confirmed by observing the changes in RX for TTL, MOSI, SS, and SCK for SPI, and SDA with SCL for I2C in accordance with the data and the byte choice.
 
 E.	Alternative Designs
-
+-----------------------
 Top Level Alternate:
 	This design uses modular design and breaks up tasks into logical blocks with some hierarchy. In this design, the individual output blocks all had the need for the data from the ROM. This led to the decision that the sequence should be handled outside of the output blocks. This makes error checking much easier as there is only one block that works with the sequence as well as the buttons. Also, the design is better for reuse because each output block can be used for multiple sequence sets whereas having the sequence controlling in the same blocks would not allow that.
 	There is a minimal hierarchy in the I2C output block because the I2C controller contains the I2C master so there is no issue with transferring signals in the top level.
@@ -179,7 +201,7 @@ I2C Alternate:
 	Lastly, unlike this design, the byte choice could be reset back to the beginning of the data from the ROM rather than the cursor command. While, again, this would be functional this would lead to error if there is an issue with hardware such as a momentary lapse in amperage or voltage. In this case the sequence would appear to start showing up in the wrong order due to the cursor pointing in the wrong location. Having the cursor command every times helps to avoid that. 
 
 F.	Sources & References
-
+------------------------
 1. Image from: http://en.wikipedia.org/wiki/Serial_Peripheral_Interface_Bus
 2. Image & Info from: http://www.i2c-bus.org/fileadmin/ftp/i2c_bus_specification_1995.pdf
 3. Code and diagram: Scott Larson, EEWiki, https://eewiki.net/pages/viewpage.action?pageId=10125324
