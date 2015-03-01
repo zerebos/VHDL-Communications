@@ -55,12 +55,12 @@ D.	Detailed Design and Module Level Testing
 --------------------------------------------
 Overall, because the design was designed with a modular basis, the individual blocks can be analyzed for their function and then the interaction between them can be seen and understood. This also allows for blocks to be reused in future designs. The RTL diagram provided by the Vivado CAD tool is shown in the appendices as well as the source code.
 
-Button Debouncing:
+###Button Debouncing:
 This portion of code does not have much complexity and is easy to recreate.
 	Although this code is provided by Digilent, the design is very straightforward making it easy to understand and utilize. In simple terms the code detects a button press then begins to count up to a pre-specified number. Upon reaching the maximum value, the code checks if the button is still at a logic ‘1’ value. If it is, then the debounce signal goes high. The counter then begins again; once the button signal goes low. When reaching the maximum value, if the button signal is still low then the debounce signal follows and falls low. It is able to check for these by using a simple “xor” of the signals for the debounced button and the hardware.
 	The toggle is simple as long as the debounce code is written and functioning. A register of the debounce signal is used to check and see if there was a change in value. If the signal goes from a low to a high, another signal, for the button pulse, goes high for one clock cycle which changes the value of the toggle to the opposite of the previous value.
 
-Sequence Controller:
+###Sequence Controller:
 	The generic job of this component is to generate numerical addresses for a ROM at the speed of 1Hz. The only part that adds complexity to this portion of code is the handling of the buttons. This code must utilize a clock enabler which activates every 1 second, a very simple piece of code. Using this, the sequence controller will increment the address for the ROM every second given that it is not in reset, not disabled and not counting backwards. The pseudo-code is shown below:
 
 
