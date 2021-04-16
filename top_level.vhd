@@ -86,6 +86,7 @@ GENERIC (
            TOGGLE_O : out  STD_LOGIC);
 end component btn_debounce_toggle;
 
+-- SequenceStorage should be a Xilinx single port ROM IP-Core
 COMPONENT SequenceStorage
   PORT (
     clka : IN STD_LOGIC;
